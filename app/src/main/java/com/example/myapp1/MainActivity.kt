@@ -34,7 +34,9 @@ import com.example.myapp1.ui.theme.MCLRed
 import com.example.myapp1.ui.theme.MCLWhite
 import com.example.myapp1.ui.theme.MyApp1Theme
 import kotlinx.coroutines.launch
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
     var nameState by mutableStateOf("")
@@ -42,7 +44,7 @@ class MainActivity : ComponentActivity() {
     var countryState by mutableStateOf("")
     var genderState by mutableStateOf("")
 
-
+    var isAgeError by mutableStateOf(false)
     var originalNameForUpdate by mutableStateOf("")
 
     private lateinit var apiService: ApiService
@@ -138,29 +140,97 @@ class MainActivity : ComponentActivity() {
         )
         OutlinedTextField(
             value = ageState,
-            onValueChange = { ageState = it },
+            onValueChange = {
+                ageState = it
+                isAgeError = it.isNotBlank() && it.any { char -> !char.isDigit() }},
             label = { Text("Age") },
 
             leadingIcon = { Icon(Icons.Filled.Pin, contentDescription = "Age") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = isAgeError,
+            supportingText = {
+                if (isAgeError) {
+                    Text(
+                        text = "Age must contain only numbers.",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
-        OutlinedTextField(
-            value = countryState,
-            onValueChange = { countryState = it },
-            label = { Text("Country") },
+        val countries = Locale.getISOCountries().mapNotNull { iso ->
+            Locale("", iso).getDisplayCountry(Locale.ENGLISH)
+        }.distinct().sorted()
+        var countryExpanded by remember { mutableStateOf(false) }
 
-            leadingIcon = { Icon(Icons.Filled.Public, contentDescription = "Country") },
+        ExposedDropdownMenuBox(
+            expanded = countryExpanded,
+            onExpandedChange = { countryExpanded = !countryExpanded },
             modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = countryState,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Country") },
+                leadingIcon = { Icon(Icons.Filled.Public, contentDescription = "Country") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countryExpanded) },
+                modifier = Modifier
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = countryExpanded,
+                onDismissRequest = { countryExpanded = false }
+            ) {
+                countries.forEach { country ->
+                    DropdownMenuItem(
+                        text = { Text(country) },
+                        onClick = {
+                            countryState = country
+                            countryExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+        val genders = listOf(
+            "Male", "Female", "Bisexual", "Gay", "Lesbian",
+            "Transgender Male", "Transgender Female", "Non-binary", "Queer", "Prefer not to say"
         )
-        OutlinedTextField(
-            value = genderState,
-            onValueChange = { genderState = it },
-            label = { Text("Gender") },
+        var genderExpanded by remember { mutableStateOf(false) }
 
-            leadingIcon = { Icon(Icons.Filled.Wc, contentDescription = "Gender") },
+        ExposedDropdownMenuBox(
+            expanded = genderExpanded,
+            onExpandedChange = { genderExpanded = !genderExpanded },
             modifier = Modifier.fillMaxWidth()
-        )
+        ) {
+            OutlinedTextField(
+                value = genderState,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Gender") },
+                leadingIcon = { Icon(Icons.Filled.Wc, contentDescription = "Gender") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
+                modifier = Modifier
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = genderExpanded,
+                onDismissRequest = { genderExpanded = false }
+            ) {
+                genders.forEach { gender ->
+                    DropdownMenuItem(
+                        text = { Text(gender) },
+                        onClick = {
+                            genderState = gender
+                            genderExpanded = false
+                        }
+                    )
+                }
+            }
+        }
     }
 
     @Composable
@@ -169,6 +239,10 @@ class MainActivity : ComponentActivity() {
         val context = LocalContext.current
         Button(
             onClick = {
+                if (isAgeError) {
+                    showToast(context, "Please enter a valid age.")
+                    return@Button
+                }
                 if (nameState.isNotBlank() && ageState.isNotBlank() && countryState.isNotBlank() && genderState.isNotBlank()) {
                     coroutineScope.launch {
                         onIsLoadingChange(true)
@@ -274,6 +348,10 @@ class MainActivity : ComponentActivity() {
         val context = LocalContext.current
         Button(
             onClick = {
+                if (isAgeError) {
+                    showToast(context, "Please enter a valid age.")
+                    return@Button
+                }
                 if (originalNameForUpdate.isNotBlank()) {
                     if (nameState.isNotBlank() && ageState.isNotBlank() && countryState.isNotBlank() && genderState.isNotBlank()) {
                         coroutineScope.launch {
