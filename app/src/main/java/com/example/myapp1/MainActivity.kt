@@ -9,7 +9,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -19,16 +24,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.myapp1.ui.theme.MCLDark
+import com.example.myapp1.ui.theme.MCLDarkGray
+import com.example.myapp1.ui.theme.MCLLight
+import com.example.myapp1.ui.theme.MCLRed
+import com.example.myapp1.ui.theme.MCLWhite
 import com.example.myapp1.ui.theme.MyApp1Theme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    // State for input fields - hoisted to be accessible by multiple dialogs/functions if needed
+    // State for input fields
     var nameState by mutableStateOf("")
     var ageState by mutableStateOf("")
     var countryState by mutableStateOf("")
@@ -41,7 +49,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        apiService = ApiService(applicationContext) // Initialize ApiService
+        apiService = ApiService(applicationContext)
         enableEdgeToEdge()
         setContent {
             MyApp1Theme {
@@ -52,301 +60,298 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        apiService.close() // Close the Ktor client
+        apiService.close()
     }
 
-    @Preview(widthDp = 300, heightDp = 600)
+    @Preview(showBackground = true)
     @Composable
     fun MyLayoutApp() {
+        var isLoading by remember { mutableStateOf(false) }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
+                .background(MaterialTheme.colorScheme.background)
         ) {
             Larawan()
+
             Column(
                 modifier = Modifier
-                    .padding(16.dp) // Added more padding
-                    .fillMaxWidth(),
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp) // Spacing between items
+                verticalArrangement = Arrangement.Center
             ) {
-                MyInputFields() // Renamed for clarity
-                AddButton()
-                SearchButton()
-                EditButton()
-                DeleteButton()
+                Text(
+                    text = "User Management Utility",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MCLWhite)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        MyInputFields()
+                        AddButton(onIsLoadingChange = { isLoading = it })
+                        SearchButton(onIsLoadingChange = { isLoading = it })
+                        EditButton(onIsLoadingChange = { isLoading = it })
+                        DeleteButton(onIsLoadingChange = { isLoading = it })
+                    }
+                }
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }
 
     @Composable
     fun MyInputFields() {
-        // Use the hoisted state variables
-        TextField(
+        OutlinedTextField(
             value = nameState,
             onValueChange = { nameState = it },
-            label = { Text("Name") }, // Added labels for better UX
+            label = { Text("Name") },
+            leadingIcon = { Icon(Icons.Filled.Person, contentDescription = "Name") },
             modifier = Modifier.fillMaxWidth()
         )
-        TextField(
+        OutlinedTextField(
             value = ageState,
             onValueChange = { ageState = it },
             label = { Text("Age") },
+            // --- FIX: Replaced 'Numbers' with 'Pin', a valid Material Icon ---
+            leadingIcon = { Icon(Icons.Filled.Pin, contentDescription = "Age") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
-        TextField(
+        OutlinedTextField(
             value = countryState,
             onValueChange = { countryState = it },
             label = { Text("Country") },
+            // --- FIX: Used Icons.Filled.Public for correctness ---
+            leadingIcon = { Icon(Icons.Filled.Public, contentDescription = "Country") },
             modifier = Modifier.fillMaxWidth()
         )
-        TextField(
+        OutlinedTextField(
             value = genderState,
             onValueChange = { genderState = it },
             label = { Text("Gender") },
+            // --- FIX: Used Icons.Filled.Wc for correctness ---
+            leadingIcon = { Icon(Icons.Filled.Wc, contentDescription = "Gender") },
             modifier = Modifier.fillMaxWidth()
         )
     }
 
     @Composable
-    fun AddButton() {
+    fun AddButton(onIsLoadingChange: (Boolean) -> Unit) {
         val coroutineScope = rememberCoroutineScope()
+        val context = LocalContext.current
         Button(
             onClick = {
                 coroutineScope.launch {
-                    apiService.addRecord(nameState, ageState, countryState, genderState)
-                    // Optionally clear fields after adding
-                    nameState = ""
-                    ageState = ""
-                    countryState = ""
-                    genderState = ""
+                    onIsLoadingChange(true)
+                    try {
+                        apiService.addRecord(nameState, ageState, countryState, genderState)
+                        Toast.makeText(context, "Record added!", Toast.LENGTH_SHORT).show()
+                        nameState = ""
+                        ageState = ""
+                        countryState = ""
+                        genderState = ""
+                    } finally {
+                        onIsLoadingChange(false)
+                    }
                 }
             },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                contentColor = Color(0XFF0F9D58),
-                containerColor = Color.Black
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = MCLDark),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 12.dp)
         ) {
-            Text("Add Record", fontSize = 14.sp)
+            Icon(Icons.Filled.Add, contentDescription = "Add Record", modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+            Text("Add Record")
         }
     }
 
     @Composable
-    fun SearchButton() {
+    fun SearchButton(onIsLoadingChange: (Boolean) -> Unit) {
         val coroutineScope = rememberCoroutineScope()
         var showDialog by remember { mutableStateOf(false) }
         var searchName by rememberSaveable { mutableStateOf("") }
+        val context = LocalContext.current
 
         Button(
             onClick = { showDialog = true },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                contentColor = Color(0XFF0F9D58),
-                containerColor = Color.Black
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = MCLLight),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 12.dp)
         ) {
+            Icon(Icons.Filled.Search, contentDescription = "Search", modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
             Text("Search by Name")
         }
 
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("SEARCH RECORD") },
+                title = { Text("Search Record") },
                 text = {
-                    Column {
-                        Text("Enter name to search:")
-                        TextField(
-                            value = searchName,
-                            onValueChange = { searchName = it },
-                            placeholder = { Text("Type name here") }
-                        )
-                    }
+                    OutlinedTextField(
+                        value = searchName,
+                        onValueChange = { searchName = it },
+                        label = { Text("Name to search") }
+                    )
                 },
                 confirmButton = {
                     Button(onClick = {
                         showDialog = false
                         coroutineScope.launch {
-                            val result = apiService.searchRecord(searchName)
-                            // Assuming your search_record.php returns data that you might want to
-                            // populate into the fields for editing.
-                            // This part depends heavily on your API's response format.
-                            // For simplicity, we're just showing a toast here.
-                            // If it returns JSON, you'd parse it and update nameState, ageState, etc.
-                            // For example, if your PHP script returns "Name:John,Age:30,..."
-                            // you'll need to parse this string.
-                            // For now, let's assume if a record is found, you might want to allow editing it.
-                            // So we can populate the fields if the search is "successful" (you need to define this)
-                            // Example: (VERY SIMPLIFIED - REPLACE WITH ACTUAL PARSING)
-                            if (!result.contains("Error") && !result.contains("not found")) { // Adjust this condition
-                                // This is a placeholder. You'll need to parse the 'result'
-                                // and set nameState, ageState, etc.
-                                // For example, if result is "John,30,USA,M"
-                                val parts = result.split(",")
-                                if (parts.size >= 4) {
-                                    nameState = parts[0]
-                                    ageState = parts[1]
-                                    countryState = parts[2]
-                                    genderState = parts[3]
-                                    originalNameForUpdate = parts[0] // Store for potential update
+                            onIsLoadingChange(true)
+                            try {
+                                // --- FIX: Logic to handle plain string response ---
+                                val result = apiService.searchRecord(searchName)
+                                if (!result.contains("Error") && !result.contains("not found")) {
+                                    val parts = result.split(",")
+                                    if (parts.size >= 4) {
+                                        nameState = parts[0]
+                                        ageState = parts[1]
+                                        countryState = parts[2]
+                                        genderState = parts[3]
+                                        originalNameForUpdate = parts[0]
+                                        Toast.makeText(context, "Record found!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Invalid data from server.", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Record not found.", Toast.LENGTH_SHORT).show()
                                 }
+                            } finally {
+                                onIsLoadingChange(false)
+                                searchName = ""
                             }
                         }
-                        searchName = "" // Clear search field
                     }) { Text("Search") }
                 },
-                dismissButton = {
-                    Button(onClick = { showDialog = false }) { Text("Cancel") }
-                }
+                dismissButton = { Button(onClick = { showDialog = false }) { Text("Cancel") } }
             )
         }
     }
 
     @Composable
-    fun EditButton() {
+    fun EditButton(onIsLoadingChange: (Boolean) -> Unit) {
         val coroutineScope = rememberCoroutineScope()
-        var showDialog by remember { mutableStateOf(false) }
         val context = LocalContext.current
-
-        // This button is more meaningful if the fields are populated (e.g., after a search)
         Button(
             onClick = {
-                if (nameState.isNotBlank()) { // Only show dialog if there's a name (likely from a search)
-                    originalNameForUpdate = nameState // Capture the current name as the one to update
-                    showDialog = true
+                if (originalNameForUpdate.isNotBlank()) {
+                    coroutineScope.launch {
+                        onIsLoadingChange(true)
+                        try {
+                            apiService.updateRecord(originalNameForUpdate, nameState, ageState, countryState, genderState)
+                            Toast.makeText(context, "Record for '$originalNameForUpdate' updated!", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            onIsLoadingChange(false)
+                        }
+                    }
                 } else {
-                    // Optionally show a toast that the user should search first
                     Toast.makeText(context, "Search for a record first to edit.", Toast.LENGTH_SHORT).show()
                 }
             },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                contentColor = Color.Yellow, // Different color for edit
-                containerColor = Color.DarkGray
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = MCLDarkGray),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 12.dp)
         ) {
-            Text("Edit Current Record")
-        }
-
-        if (showDialog) {
-            // Re-use the input fields from the main screen, but pre-filled
-            // The user edits them directly, then clicks "Save Changes"
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text("EDIT RECORD") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Editing record for: $originalNameForUpdate")
-                        Text("Modify the details below:")
-                        // The TextFields for name, age, country, gender are already bound
-                        // to nameState, ageState, etc. So, changes in the main UI
-                        // will be reflected here if the dialog is opened after a search populates them.
-                        // You might want to have separate state for the dialog if the UX feels clunky.
-                        // For this example, we'll assume the main fields are used.
-                        MyInputFields() // Display the current input fields for editing
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        showDialog = false
-                        coroutineScope.launch {
-                            apiService.updateRecord(
-                                originalNameForUpdate, // The name of the record to update
-                                nameState,             // New name
-                                ageState,              // New age
-                                countryState,          // New country
-                                genderState            // New gender
-                            )
-                            // Optionally clear fields or re-fetch after update
-                        }
-                    }) { Text("Save Changes") }
-                },
-                dismissButton = {
-                    Button(onClick = { showDialog = false }) { Text("Cancel") }
-                }
-            )
+            Icon(Icons.Filled.Edit, contentDescription = "Edit Record", modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+            Text("Save Edits")
         }
     }
 
     @Composable
-    fun DeleteButton() {
+    fun DeleteButton(onIsLoadingChange: (Boolean) -> Unit) {
         val coroutineScope = rememberCoroutineScope()
         var showDialog by remember { mutableStateOf(false) }
         var nameToDelete by rememberSaveable { mutableStateOf("") }
+        val context = LocalContext.current
 
         Button(
             onClick = { showDialog = true },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                contentColor = Color.White,
-                containerColor = Color.Red // Destructive action color
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+            colors = ButtonDefaults.buttonColors(MCLRed),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 12.dp)
         ) {
+            Icon(Icons.Filled.Delete, contentDescription = "Delete Record", modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
             Text("Delete Record")
         }
 
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("DELETE RECORD") },
+                title = { Text("Delete Record") },
                 text = {
-                    Column {
-                        Text("Enter name of the record to delete:")
-                        TextField(
-                            value = nameToDelete,
-                            onValueChange = { nameToDelete = it },
-                            placeholder = { Text("Type name here") }
-                        )
-                    }
+                    OutlinedTextField(
+                        value = nameToDelete,
+                        onValueChange = { nameToDelete = it },
+                        label = { Text("Name to delete") }
+                    )
                 },
                 confirmButton = {
-                    Button(onClick = {
-                        showDialog = false
-                        if (nameToDelete.isNotBlank()) {
-                            coroutineScope.launch {
-                                apiService.deleteRecord(nameToDelete)
-                                // Optionally clear fields if the deleted record was displayed
-                                if (nameState == nameToDelete) {
-                                    nameState = ""
-                                    ageState = ""
-                                    countryState = ""
-                                    genderState = ""
+                    Button(
+                        onClick = {
+                            showDialog = false
+                            if (nameToDelete.isNotBlank()) {
+                                coroutineScope.launch {
+                                    onIsLoadingChange(true)
+                                    try {
+                                        apiService.deleteRecord(nameToDelete)
+                                        Toast.makeText(context, "Record deleted!", Toast.LENGTH_SHORT).show()
+                                        if (nameState == nameToDelete) {
+                                            nameState = ""
+                                            ageState = ""
+                                            countryState = ""
+                                            genderState = ""
+                                            originalNameForUpdate = ""
+                                        }
+                                    } finally {
+                                        onIsLoadingChange(false)
+                                        nameToDelete = ""
+                                    }
                                 }
                             }
-                        }
-                        nameToDelete = "" // Clear delete field
-                    }) { Text("Delete") }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Delete") }
                 },
-                dismissButton = {
-                    Button(onClick = { showDialog = false }) { Text("Cancel") }
-                }
+                dismissButton = { Button(onClick = { showDialog = false }) { Text("Cancel") } }
             )
         }
     }
 
-
     @Composable
     fun Larawan() {
         Image(
-            painter = painterResource(id = R.drawable.cat), // Make sure this drawable exists
+            painter = painterResource(id = R.drawable.cat),
             contentDescription = "background image",
-            contentScale = ContentScale.Crop, // Crop might be better for a full background
+            contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
-            alpha = 0.3f // Make it a bit transparent if it's a background
+            alpha = 0.2f
         )
     }
 }

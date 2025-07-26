@@ -11,7 +11,7 @@ import io.ktor.client.statement.*
 class ApiService(private val context: Context) {
 
     private val client = HttpClient(CIO)
-    private val baseUrl = "http://192.168.0.103/IT123P/REST/" // Your base URL
+    private val baseUrl = "http://10.0.2.2/IT140P/REST/" // Your base URL
 
     suspend fun addRecord(name: String, age: String, country: String, gender: String): String {
         return try {
