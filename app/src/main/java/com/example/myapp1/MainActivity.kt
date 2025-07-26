@@ -214,6 +214,7 @@ class MainActivity : ComponentActivity() {
     fun EditButton() {
         val coroutineScope = rememberCoroutineScope()
         var showDialog by remember { mutableStateOf(false) }
+        val context = LocalContext.current
 
         // This button is more meaningful if the fields are populated (e.g., after a search)
         Button(
@@ -223,7 +224,7 @@ class MainActivity : ComponentActivity() {
                     showDialog = true
                 } else {
                     // Optionally show a toast that the user should search first
-                    Toast.makeText(LocalContext.current, "Search for a record first to edit.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Search for a record first to edit.", Toast.LENGTH_SHORT).show()
                 }
             },
             shape = RoundedCornerShape(12.dp),
