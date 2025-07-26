@@ -63,6 +63,10 @@ class MainActivity : ComponentActivity() {
         apiService.close()
     }
 
+    private fun showToast(context: Context, message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
+
     @Preview(showBackground = true)
     @Composable
     fun MyLayoutApp() {
@@ -165,18 +169,26 @@ class MainActivity : ComponentActivity() {
         val context = LocalContext.current
         Button(
             onClick = {
-                coroutineScope.launch {
-                    onIsLoadingChange(true)
-                    try {
-                        apiService.addRecord(nameState, ageState, countryState, genderState)
-                        Toast.makeText(context, "Record added!", Toast.LENGTH_SHORT).show()
-                        nameState = ""
-                        ageState = ""
-                        countryState = ""
-                        genderState = ""
-                    } finally {
-                        onIsLoadingChange(false)
+                if (nameState.isNotBlank() && ageState.isNotBlank() && countryState.isNotBlank() && genderState.isNotBlank()) {
+                    coroutineScope.launch {
+                        onIsLoadingChange(true)
+                        try {
+                            val responseMessage = apiService.addRecord(nameState, ageState, countryState, genderState)
+                            showToast(context, responseMessage) // --- FIX: Show the toast here ---
+                            if (responseMessage.contains("successfully", ignoreCase = true)) {
+                                nameState = ""
+                                ageState = ""
+                                countryState = ""
+                                genderState = ""
+                            }
+                        } catch (e: Exception) {
+                            showToast(context, "Client Error: ${e.message}")
+                        } finally {
+                            onIsLoadingChange(false)
+                        }
                     }
+                } else {
+                    showToast(context, "All fields are required.")
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = MCLDark),
@@ -220,30 +232,33 @@ class MainActivity : ComponentActivity() {
                 },
                 confirmButton = {
                     Button(onClick = {
-                        showDialog = false
-                        coroutineScope.launch {
-                            onIsLoadingChange(true)
-                            try {
-                                // --- FIX: Logic to handle plain string response ---
-                                val result = apiService.searchRecord(searchName)
-                                if (!result.contains("Error") && !result.contains("not found")) {
-                                    val parts = result.split(",")
-                                    if (parts.size >= 4) {
-                                        nameState = parts[0]
-                                        ageState = parts[1]
-                                        countryState = parts[2]
-                                        genderState = parts[3]
-                                        originalNameForUpdate = parts[0]
-                                        Toast.makeText(context, "Record found!", Toast.LENGTH_SHORT).show()
+                        if(searchName.isNotBlank()){
+                            showDialog = false
+                            coroutineScope.launch {
+                                onIsLoadingChange(true)
+                                try {
+                                    val result = apiService.searchRecord(searchName)
+                                    if (!result.startsWith("Error", ignoreCase = true)) {
+                                        val parts = result.split(",")
+                                        if (parts.size >= 4) {
+                                            nameState = parts[0]
+                                            ageState = parts[1]
+                                            countryState = parts[2]
+                                            genderState = parts[3]
+                                            originalNameForUpdate = parts[0]
+                                            showToast(context, "Record found!")
+                                        } else {
+                                            showToast(context, "Invalid data from server.")
+                                        }
                                     } else {
-                                        Toast.makeText(context, "Invalid data from server.", Toast.LENGTH_SHORT).show()
+                                        showToast(context, result) // --- FIX: Show the specific error ---
                                     }
-                                } else {
-                                    Toast.makeText(context, "Record not found.", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    showToast(context, "Client Error: ${e.message}")
+                                } finally {
+                                    onIsLoadingChange(false)
+                                    searchName = ""
                                 }
-                            } finally {
-                                onIsLoadingChange(false)
-                                searchName = ""
                             }
                         }
                     }) { Text("Search") }
@@ -260,17 +275,26 @@ class MainActivity : ComponentActivity() {
         Button(
             onClick = {
                 if (originalNameForUpdate.isNotBlank()) {
-                    coroutineScope.launch {
-                        onIsLoadingChange(true)
-                        try {
-                            apiService.updateRecord(originalNameForUpdate, nameState, ageState, countryState, genderState)
-                            Toast.makeText(context, "Record for '$originalNameForUpdate' updated!", Toast.LENGTH_SHORT).show()
-                        } finally {
-                            onIsLoadingChange(false)
+                    if (nameState.isNotBlank() && ageState.isNotBlank() && countryState.isNotBlank() && genderState.isNotBlank()) {
+                        coroutineScope.launch {
+                            onIsLoadingChange(true)
+                            try {
+                                val responseMessage = apiService.updateRecord(originalNameForUpdate, nameState, ageState, countryState, genderState)
+                                showToast(context, responseMessage) // --- FIX: Show the toast here ---
+                                if (responseMessage.contains("successfully", ignoreCase = true)) {
+                                    originalNameForUpdate = nameState
+                                }
+                            } catch (e: Exception) {
+                                showToast(context, "Client Error: ${e.message}")
+                            } finally {
+                                onIsLoadingChange(false)
+                            }
                         }
+                    } else {
+                        showToast(context, "Fields cannot be empty for an update.")
                     }
                 } else {
-                    Toast.makeText(context, "Search for a record first to edit.", Toast.LENGTH_SHORT).show()
+                    showToast(context, "Search for a record first to edit.")
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = MCLDarkGray),
@@ -315,20 +339,24 @@ class MainActivity : ComponentActivity() {
                 confirmButton = {
                     Button(
                         onClick = {
-                            showDialog = false
                             if (nameToDelete.isNotBlank()) {
+                                showDialog = false
                                 coroutineScope.launch {
                                     onIsLoadingChange(true)
                                     try {
-                                        apiService.deleteRecord(nameToDelete)
-                                        Toast.makeText(context, "Record deleted!", Toast.LENGTH_SHORT).show()
-                                        if (nameState == nameToDelete) {
-                                            nameState = ""
-                                            ageState = ""
-                                            countryState = ""
-                                            genderState = ""
-                                            originalNameForUpdate = ""
+                                        val responseMessage = apiService.deleteRecord(nameToDelete)
+                                        showToast(context, responseMessage) // --- FIX: Show the toast here ---
+                                        if (responseMessage.contains("successfully", ignoreCase = true)) {
+                                            if (nameState == nameToDelete) {
+                                                nameState = ""
+                                                ageState = ""
+                                                countryState = ""
+                                                genderState = ""
+                                                originalNameForUpdate = ""
+                                            }
                                         }
+                                    } catch (e: Exception) {
+                                        showToast(context, "Client Error: ${e.message}")
                                     } finally {
                                         onIsLoadingChange(false)
                                         nameToDelete = ""

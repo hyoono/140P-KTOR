@@ -7,29 +7,39 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.call.body
 import io.ktor.client.statement.*
+import io.ktor.client.plugins.*
+import io.ktor.client.request.forms.submitForm
+import io.ktor.http.Parameters
+
 
 class ApiService(private val context: Context) {
 
-    private val client = HttpClient(CIO)
+    private val client = HttpClient(CIO) {
+        expectSuccess = false
+    }
     private val baseUrl = "http://10.0.2.2/IT140P/REST/" // Your base URL
-
-    suspend fun addRecord(name: String, age: String, country: String, gender: String): String {
+    private suspend fun makePostRequest(endpoint: String, params: Parameters): String {
         return try {
-            val response: HttpResponse = client.get("${baseUrl}add_record.php") {
-                parameter("name", name)
-                parameter("age", age)
-                parameter("country", country)
-                parameter("gender", gender)
-            }
-            val responseBody: String = response.body()
-            showToast(responseBody)
-            responseBody
+            val response: HttpResponse = client.submitForm(
+                url = baseUrl + endpoint,
+                formParameters = params
+            )
+            response.body() // --- FIX: Return the body directly ---
         } catch (e: Exception) {
             e.printStackTrace()
-            val errorMessage = "Error adding record: ${e.message}"
-            showToast(errorMessage)
-            errorMessage
+            // Return a client-side error message
+            "Client-side error: ${e.message}"
         }
+    }
+
+    suspend fun addRecord(name: String, age: String, country: String, gender: String): String {
+        val formParams = Parameters.build {
+            append("name", name)
+            append("age", age)
+            append("country", country)
+            append("gender", gender)
+        }
+        return makePostRequest("add_record.php", formParams)
     }
 
     suspend fun searchRecord(name: String): String {
@@ -37,60 +47,38 @@ class ApiService(private val context: Context) {
             val response: HttpResponse = client.get("${baseUrl}search_record.php") {
                 parameter("name", name)
             }
-            val responseBody: String = response.body()
-            showToast(responseBody) // Assuming the response is a direct message or JSON
-            responseBody
+            response.body() // --- FIX: Return the body directly ---
         } catch (e: Exception) {
             e.printStackTrace()
-            val errorMessage = "Error searching record: ${e.message}"
-            showToast(errorMessage)
-            errorMessage
+            "Client-side error: ${e.message}"
         }
     }
 
     suspend fun updateRecord(originalName: String, newName: String, newAge: String, newCountry: String, newGender: String): String {
-        // Assuming your update_record.php script takes the original name to identify the record
-        // and then the new values. Adjust parameters as per your backend script.
-        return try {
-            val response: HttpResponse = client.get("${baseUrl}update_record.php") {
-                parameter("original_name", originalName) // To identify the record
-                parameter("new_name", newName)
-                parameter("new_age", newAge)
-                parameter("new_country", newCountry)
-                parameter("new_gender", newGender)
-            }
-            val responseBody: String = response.body()
-            showToast(responseBody)
-            responseBody
-        } catch (e: Exception) {
-            e.printStackTrace()
-            val errorMessage = "Error updating record: ${e.message}"
-            showToast(errorMessage)
-            errorMessage
+        val formParams = Parameters.build {
+            append("original_name", originalName)
+            append("name", newName)
+            append("age", newAge)
+            append("country", newCountry)
+            append("gender", newGender)
         }
+        return makePostRequest("update_record.php", formParams)
     }
 
     suspend fun deleteRecord(name: String): String {
-        return try {
-            val response: HttpResponse = client.get("${baseUrl}delete_record.php") {
-                parameter("name", name) // Assuming deletion is by name
-            }
-            val responseBody: String = response.body()
-            showToast(responseBody)
-            responseBody
-        } catch (e: Exception) {
-            e.printStackTrace()
-            val errorMessage = "Error deleting record: ${e.message}"
-            showToast(errorMessage)
-            errorMessage
+        val formParams = Parameters.build {
+            append("name", name)
+        }
+        return makePostRequest("delete_record.php", formParams)
+    }
+
+    // --- FIX: This function is no longer needed here, but we'll keep it for now ---
+    private fun showToast(message: String) {
+        (context as? android.app.Activity)?.runOnUiThread {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun showToast(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-    }
-
-    // Call this when your activity/application is destroyed to clean up resources
     fun close() {
         client.close()
     }
