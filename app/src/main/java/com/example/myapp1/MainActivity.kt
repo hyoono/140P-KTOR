@@ -36,13 +36,13 @@ import com.example.myapp1.ui.theme.MyApp1Theme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    // State for input fields
+
     var nameState by mutableStateOf("")
     var ageState by mutableStateOf("")
     var countryState by mutableStateOf("")
     var genderState by mutableStateOf("")
 
-    // For update, we need to know the original name to identify the record
+
     var originalNameForUpdate by mutableStateOf("")
 
     private lateinit var apiService: ApiService
@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
             value = ageState,
             onValueChange = { ageState = it },
             label = { Text("Age") },
-            // --- FIX: Replaced 'Numbers' with 'Pin', a valid Material Icon ---
+
             leadingIcon = { Icon(Icons.Filled.Pin, contentDescription = "Age") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
@@ -149,7 +149,7 @@ class MainActivity : ComponentActivity() {
             value = countryState,
             onValueChange = { countryState = it },
             label = { Text("Country") },
-            // --- FIX: Used Icons.Filled.Public for correctness ---
+
             leadingIcon = { Icon(Icons.Filled.Public, contentDescription = "Country") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity() {
             value = genderState,
             onValueChange = { genderState = it },
             label = { Text("Gender") },
-            // --- FIX: Used Icons.Filled.Wc for correctness ---
+
             leadingIcon = { Icon(Icons.Filled.Wc, contentDescription = "Gender") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
                         onIsLoadingChange(true)
                         try {
                             val responseMessage = apiService.addRecord(nameState, ageState, countryState, genderState)
-                            showToast(context, responseMessage) // --- FIX: Show the toast here ---
+                            showToast(context, responseMessage)
                             if (responseMessage.contains("successfully", ignoreCase = true)) {
                                 nameState = ""
                                 ageState = ""
@@ -251,7 +251,7 @@ class MainActivity : ComponentActivity() {
                                             showToast(context, "Invalid data from server.")
                                         }
                                     } else {
-                                        showToast(context, result) // --- FIX: Show the specific error ---
+                                        showToast(context, result)
                                     }
                                 } catch (e: Exception) {
                                     showToast(context, "Client Error: ${e.message}")
@@ -280,7 +280,7 @@ class MainActivity : ComponentActivity() {
                             onIsLoadingChange(true)
                             try {
                                 val responseMessage = apiService.updateRecord(originalNameForUpdate, nameState, ageState, countryState, genderState)
-                                showToast(context, responseMessage) // --- FIX: Show the toast here ---
+                                showToast(context, responseMessage)
                                 if (responseMessage.contains("successfully", ignoreCase = true)) {
                                     originalNameForUpdate = nameState
                                 }
@@ -345,7 +345,7 @@ class MainActivity : ComponentActivity() {
                                     onIsLoadingChange(true)
                                     try {
                                         val responseMessage = apiService.deleteRecord(nameToDelete)
-                                        showToast(context, responseMessage) // --- FIX: Show the toast here ---
+                                        showToast(context, responseMessage)
                                         if (responseMessage.contains("successfully", ignoreCase = true)) {
                                             if (nameState == nameToDelete) {
                                                 nameState = ""

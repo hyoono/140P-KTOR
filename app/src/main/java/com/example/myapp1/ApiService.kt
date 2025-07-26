@@ -1,7 +1,6 @@
 package com.example.myapp1
 
 import android.content.Context
-import android.widget.Toast
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
@@ -17,17 +16,17 @@ class ApiService(private val context: Context) {
     private val client = HttpClient(CIO) {
         expectSuccess = false
     }
-    private val baseUrl = "http://10.0.2.2/IT140P/REST/" // Your base URL
+    private val baseUrl = "http://10.0.2.2/IT140P/REST/"
     private suspend fun makePostRequest(endpoint: String, params: Parameters): String {
         return try {
             val response: HttpResponse = client.submitForm(
                 url = baseUrl + endpoint,
                 formParameters = params
             )
-            response.body() // --- FIX: Return the body directly ---
+            response.body()
         } catch (e: Exception) {
             e.printStackTrace()
-            // Return a client-side error message
+
             "Client-side error: ${e.message}"
         }
     }
@@ -47,7 +46,7 @@ class ApiService(private val context: Context) {
             val response: HttpResponse = client.get("${baseUrl}search_record.php") {
                 parameter("name", name)
             }
-            response.body() // --- FIX: Return the body directly ---
+            response.body()
         } catch (e: Exception) {
             e.printStackTrace()
             "Client-side error: ${e.message}"
@@ -70,13 +69,6 @@ class ApiService(private val context: Context) {
             append("name", name)
         }
         return makePostRequest("delete_record.php", formParams)
-    }
-
-    // --- FIX: This function is no longer needed here, but we'll keep it for now ---
-    private fun showToast(message: String) {
-        (context as? android.app.Activity)?.runOnUiThread {
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-        }
     }
 
     fun close() {
